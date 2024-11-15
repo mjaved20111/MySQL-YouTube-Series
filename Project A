@@ -1,0 +1,59 @@
+-- Cleaning Data
+-- 1- Removing duplicates
+
+SELECT * 
+FROM layoffs;
+
+-- CREATE TABLE
+CREATE TABLE layoffs_stage1
+like layoffs;
+
+SELECT *
+FROM layoffs_stage1;
+
+INSERT layoffs_stage1
+SELECT *
+FROM layoffs;
+
+-- IDENTIFY DUPLICATES
+SELECT *
+FROM (
+	SELECT company, location, industry, total_laid_off,percentage_laid_off,`date`, stage, country, funds_raised_millions,
+		ROW_NUMBER() OVER (
+			PARTITION BY company, location, industry, total_laid_off,percentage_laid_off,`date`, stage, country, funds_raised_millions
+			) AS row_num
+	FROM 
+		world_layoffs.layoffs_stage1
+) duplicates
+WHERE 
+	row_num > 1;
+
+
+-- SET SQL SAFE UDATE OFF
+SET SQL_SAFE_UPDATES = 0;
+
+SELECT *
+FROM layoffs_stage1;
+
+-- CHAT GPT CORRECTED METHOD
+-- ALTER THE TABLE BY ADDING ID COLONM 
+# ALTER TABLE world_layoffs.layoffs_stage1 ADD COLUMN id INT AUTO_INCREMENT PRIMARY KEY;
+
+WITH duplicates AS (
+    SELECT id
+    FROM (
+        SELECT id,
+               ROW_NUMBER() OVER (
+                   PARTITION BY company, location, industry, total_laid_off,
+                                percentage_laid_off, `date`, stage, country, funds_raised_millions
+                   ORDER BY id
+               ) AS row_num
+        FROM world_layoffs.layoffs_stage1
+    ) AS ranked
+    WHERE row_num > 1
+)
+DELETE FROM world_layoffs.layoffs_stage1
+WHERE id IN (SELECT id FROM duplicates);
+
+SELECT *
+FROM layoffs_stage1;
